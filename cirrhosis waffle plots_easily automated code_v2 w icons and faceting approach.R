@@ -28,28 +28,32 @@ outcome_vals<-xdf %>%
 xdf<- xdf %>% 
   left_join(outcome_vals, by = "outcomes") %>% 
   mutate(outcomes_new=paste(outcomes," (",outcome_total,")"),
-         suboutcomes=paste(vals, suboutcomes))
+         suboutcomes_new=paste(vals, suboutcomes))
 
 ##faceting approach
+ xdf<-xdf %>% 
+   group_by(outcomes) %>% 
+   mutate(outcomes_new=paste(suboutcomes_new,collapse="\n")) 
 
-p<- xdf %>%
-  count(suboutcomes, outcomes, wt = vals) %>%
+ p<- xdf %>%
+  count(suboutcomes, outcomes_new, wt = vals) %>%
   ggplot(
     aes(fill = suboutcomes, values = n)
   ) +
   geom_waffle(
-    n_rows = 20,
+    n_rows = 10,
     size = 0.33, 
     colour = "white",
-    flip = TRUE,
+    ##flip = TRUE,
     show.legend = TRUE
   ) +
   coord_equal() +
   theme_ipsum_rc(grid="") +
   theme_enhance_waffle() +
-  facet_wrap(~outcomes,
-             nrow=1)
+  facet_wrap(~outcomes_new,
+             nrow=4)
 p
+
 
 ##subset data
 xdf1<-filter(xdf, outcomes=="normal surveillance")
