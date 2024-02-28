@@ -31,18 +31,13 @@ xdf<- xdf %>%
          suboutcomes_new=paste(vals, suboutcomes))
 
 ##faceting approach
-install.packages("huxtable")
-require(huxtable)
 
-# xdf<-hux(xdf)
-# set_bold(xdf,2:2,1,FALSE)
-# xdf
 
  xdf<-xdf %>% 
    group_by(outcomes) %>% 
    mutate(outcomes_new=paste(suboutcomes_new,collapse="\n")) %>% 
    ungroup() %>% 
-   mutate(outcomes_new=paste(outcomes,"\n",outcomes_new))
+   mutate(outcomes_new=paste(outcomes,"\n","\n",outcomes_new))
 
  p<- xdf %>%
   count(suboutcomes, outcomes_new, wt = vals) %>%
@@ -61,7 +56,8 @@ require(huxtable)
   theme_enhance_waffle() +
   facet_wrap(~outcomes_new,
              nrow=1)+
-   theme(legend.position="bottom")
+   theme(legend.position="bottom")+
+   theme(strip.text.x = element_text(vjust = 1))
  
  p
 
