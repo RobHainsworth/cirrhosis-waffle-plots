@@ -1,312 +1,96 @@
-install.packages("dplyr","magrittr","ggplot2","waffle","socviz","hrbrthemes","fontawesome", "cowplot")
-library(dplyr, magrittr, ggplot2, waffle, socviz, hrbrthemes, fontawesome, cowplot)
-library(waffle)
+library(pacman)
+p_load(here,
+       tidyverse,
+       magrittr,
+       waffle,
+       socviz,
+       hrbrthemes,
+       fontawesome,
+       cowplot,
+       glue,
+       forcats)
+
+fnPad <- function(n, l = 4) {(trunc((n-1) / w)+1) * w - n + w*l}
 
 ##Create data
+yrs <- 5
+w <- 25
 
-data.frame(suboutcomes = c("normal surveillance",
-                           "false alarms without biopsies",
-                           "false alarms with biopsies",
-                           "survive regardless of surveillance",
-                           "deaths averted",
-                           "die despite surveillance",
-                           "deaths from other causes"),
-           vals = c(654,111,39,28,13,69,82),
-           outcomes=c("normal surveillance",
-                      "false alarm",
-                      "false alarm",
-                      "HCC diagnosis",
-                      "HCC diagnosis",
-                      "HCC diagnosis",
-                      "deaths from other causes")
+outc <- c("{outcome_total} will have normal surveillance\nfor all {yrs} years",
+          "{outcome_total} will have at least 1 false alarm\nduring the {yrs} years",
+          "{outcome_total} will die from other causes\nduring the {yrs} years",
+          "{outcome_total} will receive a diagnosis of HCC\nduring the {yrs} years")
+
+cats <- c("normal surveillance",
+          "false alarms without biopsies",
+          "spacerFA",
+          "false alarms with biopsies",
+          "deaths from other causes",
+          "survive regardless of surveillance",
+          "spacer1",
+          "deaths averted",
+          "spacer2",
+          "die despite surveillance")
+
+data.frame(suboutcomes = factor(cats,
+                                levels = cats),
+           vals        = c(654, 111, fnPad(111), 39, 82, 28, fnPad(28), 13, fnPad(13), 69),
+           outcomes    = factor(c(outc[1],
+                                  rep(outc[2], 3),
+                                  outc[3],
+                                  rep(outc[4], 5)),
+                                levels = outc)
 ) -> xdf
 
 outcome_vals<-xdf %>%
   group_by(outcomes) %>% 
-  summarise(outcome_total = sum(vals))
+  summarise(outcome_total = sum(ifelse(str_starts(suboutcomes, "space"), 0, vals)))
 
 xdf<- xdf %>% 
   left_join(outcome_vals, by = "outcomes") %>% 
-  mutate(outcomes_new=paste(outcomes," (",outcome_total,")"),
+  rowwise() %>% 
+  mutate(outcomes_new = glue(as.character(outcomes)),
          suboutcomes_new=paste(vals, suboutcomes))
 
 ##faceting approach
 
-
- xdf<-xdf %>% 
-   group_by(outcomes) %>% 
-   mutate(outcomes_new=paste(suboutcomes_new,collapse="\n")) %>% 
-   ungroup() %>% 
-   mutate(outcomes_new=paste(outcomes,"\n","\n",outcomes_new))
-
- p<- xdf %>%
-  count(suboutcomes, outcomes_new, wt = vals) %>%
+p<- xdf %>%
+  arrange(suboutcomes) %>% 
+  group_by(outcomes) %>% 
+  mutate(cumV = cumsum(vals),
+         strSub = ifelse(str_detect(suboutcomes, "desp|avert|regard|th b"), suboutcomes_new, "")) %>% 
   ggplot(
-    aes(fill = suboutcomes, values = n)
+    aes(fill = suboutcomes, values = vals)
   ) +
   geom_waffle(
-    n_rows = 25,
+    n_rows = w,
     size = 0.33, 
     colour = "white",
     flip = TRUE,
-    show.legend = TRUE
+    show.legend = FALSE
   ) +
+  geom_text(aes(x = 0.5, y = ceiling(cumV/w)+1.5, label = strSub), hjust = 0, size = 12 / .pt) +
+  scale_fill_manual(breaks = cats,
+                    values = c("blue",
+                               "pink",
+                               "white",
+                               "red",
+                               "black",
+                               "darkgreen",
+                               "white",
+                               "cyan",
+                               "white",
+                               "black")) +
   coord_equal() +
   theme_ipsum_rc(grid="") +
   theme_enhance_waffle() +
-  facet_wrap(~outcomes_new,
-             nrow=1)+
-   theme(legend.position="bottom")+
-   theme(strip.text.x = element_text(vjust = 1))
- 
- p
+  facet_wrap(~fct_inorder(outcomes_new),
+             nrow = 2, 
+             # labeller = label_wrap_gen(multi_line = TRUE)
+             )+
+  theme(strip.text = element_text(size = 12, family = "sans", lineheight = 1, face = "bold"),
+        plot.margin = margin()) 
 
+p
 
-##subset data
-xdf1<-filter(xdf, outcomes=="normal surveillance")
-xdf2<-filter(xdf, outcomes=="false alarm")
-xdf3<-filter(xdf, outcomes=="HCC diagnosis")
-xdf4<-filter(xdf, outcomes=="deaths from other causes")
-
-##make titles 
-title1<-paste(sum(xdf1$vals),"will have normal surveillance")
-title2<-paste(sum(xdf2$vals),"will have at least one false alarm")
-title3<-paste(sum(xdf3$vals),"will be diagnosed with HCC")
-title4<-paste(sum(xdf4$vals),"deaths from other causes")
-
-##plot waffles
-
-p1<- xdf1 %>%
-  count(outcomes_new, suboutcomes, wt = vals) %>%
-  ggplot(
-    aes(fill = outcomes_new, values = n)
-  ) +
-  geom_waffle(
-    n_rows = 20,
-    size = 0.33, 
-    colour = "white",
-    flip = TRUE,
-    show.legend = FALSE
-  ) +
-  scale_fill_manual(
-    name = NULL,
-    values = c("#969696")
-  ) +
-  coord_equal() +
-  theme_ipsum(grid="") +
-  theme_enhance_waffle()+
-  ggtitle(title1)+
-  # facet_wrap(~suboutcomes,
-  #            ##labeller = labeller(group = p2labs),
-  #            nrow=1
-  # )+
-  ##geom_text(nudge_y = 1) +
-  theme(panel.spacing.x = unit(0, "npc")) +
-  theme(strip.text.x = element_text(hjust = 0.5),
-        plot.title = element_text(hjust = 0.5))+ 
-  scale_colour_grey()
-p1
-
-p2<- xdf2 %>%
-  count(outcomes_new, suboutcomes, wt = vals) %>%
-  ggplot(
-    aes(fill = outcomes_new, values = n)
-  ) +
-  geom_waffle(
-    n_rows = 20,
-    size = 0.33, 
-    colour = "white",
-    flip = TRUE,
-    show.legend = FALSE
-  ) +
-  scale_fill_manual(
-    name = NULL,
-    values = c("#969696")
-  ) +
-  coord_equal() +
-  theme_ipsum(grid="") +
-  theme_enhance_waffle()+
-  ggtitle(title2)+
-  facet_wrap(~suboutcomes,
-             ##labeller = labeller(group = p2labs),
-             nrow=1
-  )+
-  ##geom_text(nudge_y = 1) +
-  theme(panel.spacing.x = unit(0, "npc")) +
-  theme(strip.text.x = element_text(hjust = 0.5),
-        plot.title = element_text(hjust = 0.5))+ 
-  scale_colour_grey()
-
-p3<- xdf3 %>%
-  count(outcomes_new, suboutcomes, wt = vals) %>%
-  ggplot(
-    aes(fill = outcomes_new, values = n)
-  ) +
-  geom_waffle(
-    n_rows = 20,
-    size = 0.33, 
-    colour = "white",
-    flip = TRUE,
-    show.legend = FALSE
-  ) +
-  scale_fill_manual(
-    name = NULL,
-    values = c("#969696")
-  ) +
-  coord_equal() +
-  theme_ipsum(grid="") +
-  theme_enhance_waffle()+
-  ggtitle(title3)+
-  facet_wrap(~suboutcomes,
-             ##labeller = labeller(group = p3labs),
-             nrow=1
-  )+
-  ##geom_text(nudge_y = 1) +
-  theme(panel.spacing.x = unit(0, "npc")) +
-  theme(strip.text.x = element_text(hjust = 0.5),
-        plot.title = element_text(hjust = 0.5))+ 
-  scale_colour_grey()
-
-p4<- xdf4 %>%
-  count(outcomes_new, suboutcomes, wt = vals) %>%
-  ggplot(
-    aes(fill = outcomes_new, values = n)
-  ) +
-  geom_waffle(
-    n_rows = 20,
-    size = 0.33,
-    colour = "white",
-    flip = TRUE,
-    show.legend = FALSE
-  ) +
-  scale_fill_manual(
-    name = NULL,
-    values = c("#969696")
-  ) +
-  coord_equal() +
-  theme_ipsum(grid="") +
-  theme_enhance_waffle()+
-  ggtitle(title4)+ 
-  scale_colour_grey()
-
-##arrange waffles on page, adjusting ratio of width and height each waffle occupies
-
-lay_out(list(p1,1:100,1:28),list(p2,1:36,29:100),list(p3,37:70,29:100),list(p4,71:100,29:100))
-
-#experimenting with pictograms
-
-install.packages("emojifont")
-library(emojifont)
-load.fontawesome()
-
-p1<- xdf1 %>% ggplot(aes(label = outcomes)) +
-  geom_pictogram(
-    n_rows = 25, aes(color = outcomes, values = vals),
-    family = "fontawesome-webfont",
-    flip = TRUE,
-    size=3,
-    show.legend = FALSE
-  ) +
-  scale_label_pictogram(
-    name = "Case",
-    values = c("user")
-  ) +
-  scale_color_manual(
-    name = "Case",
-    values = c("grey85")
-   ) +
-  coord_equal() +
-  theme_ipsum(grid="") +
-  theme_enhance_waffle()+
-  ggtitle(title1)+
-  theme(strip.text = element_text(
-    size = 10.5),
-    plot.title = element_text(hjust = 0.5))
-
-p2<- xdf2 %>% ggplot(aes(label = outcomes)) +
-  geom_pictogram(
-    n_rows = 25, aes(color = outcomes, values = vals),
-    family = "fontawesome-webfont",
-    flip = TRUE,
-    size=3,
-    show.legend = FALSE
-  ) +
-  scale_label_pictogram(
-    name = "Case",
-    values = c("user")
-  ) +
-  scale_color_manual(
-    name = "Case",
-    values = c("grey85")
-  ) +
-  coord_equal() +
-  theme_ipsum(grid="") +
-  theme_enhance_waffle()+
-  ggtitle(title2)+
-  facet_wrap(~suboutcomes,
-             ##labeller = labeller(group = p2labs),
-             nrow=1
-  )+
-  theme(strip.text = element_text(size = 10.5),
-        plot.title = element_text(hjust = 0.5))
-
-p3<- xdf3 %>% ggplot(aes(label = outcomes)) +
-  geom_pictogram(
-    n_rows = 25, aes(color = outcomes, values = vals),
-    family = "fontawesome-webfont",
-    flip = TRUE,
-    size=3,
-    show.legend = FALSE
-  ) +
-  scale_label_pictogram(
-    name = "Case",
-    values = c("user")
-  ) +
-  scale_color_manual(
-    name = "Case",
-    values = c("grey85")
-  ) +
-  coord_equal() +
-  theme_ipsum(grid="") +
-  theme_enhance_waffle()+
-  ggtitle(title3)+
-  facet_wrap(~suboutcomes,
-             ##labeller = labeller(group = p2labs),
-             nrow=1
-  )+
-  theme(strip.text = element_text(
-    size = 10.5),
-    plot.title = element_text(hjust = 0.5))
-
-p4<- xdf4 %>% ggplot(aes(label = outcomes)) +
-  geom_pictogram(
-    n_rows = 25, aes(color = outcomes, values = vals),
-    family = "fontawesome-webfont",
-    flip = TRUE,
-    size=3,
-    show.legend = FALSE
-  ) +
-  scale_label_pictogram(
-    name = "Case",
-    values = c("user")
-  ) +
-  scale_color_manual(
-    name = "Case",
-    values = c("grey85")
-  ) +
-  coord_equal() +
-  theme_ipsum(grid="") +
-  theme_enhance_waffle()+
-  ggtitle(title4)+
-  theme(strip.text = element_text(
-    size = 10.5),
-    plot.title = element_text(hjust = 0.5))
-# +
-#   facet_wrap(~suboutcomes,
-#              ##labeller = labeller(group = p2labs),
-#              nrow=1
-#   )
-
-
-right_col<-plot_grid(p2,p3,p4,ncol=1,rel_heights = c(29, 47,24))
-plot_grid(p1,right_col,rel_widths=c(30,70))
+ggsave(here("waffle.jpg"), width = 20, height = 20, units = "cm", dpi = 500)
