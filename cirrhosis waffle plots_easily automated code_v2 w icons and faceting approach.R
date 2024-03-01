@@ -32,9 +32,22 @@ cats <- c("normal surveillance",
           "spacer2",
           "die despite surveillance")
 
+lstIn <- list(nNorm      = 654,
+              nFA.noBx   = 111,
+              nFA.Bx     = 39,
+              nDieOth    = 82,
+              nHCC.surv  = 28,
+              nHCC.avert = 13,
+              nHCC.die   = 69)
+
+lstIn %<>% 
+  append(fnPad(lstIn$nFA.noBx), 2) %>% 
+  append(fnPad(lstIn$nHCC.surv), 6) %>% 
+  append(fnPad(lstIn$nHCC.avert), 8)
+
 data.frame(suboutcomes = factor(cats,
                                 levels = cats),
-           vals        = c(654, 111, fnPad(111), 39, 82, 28, fnPad(28), 13, fnPad(13), 69),
+           vals        = as.numeric(lstIn),
            outcomes    = factor(c(outc[1],
                                   rep(outc[2], 3),
                                   outc[3],
@@ -64,7 +77,7 @@ p<- xdf %>%
   ) +
   geom_waffle(
     n_rows = w,
-    size = 0.33, 
+    size = 0.3, 
     colour = "white",
     flip = TRUE,
     show.legend = FALSE
@@ -88,7 +101,10 @@ p<- xdf %>%
              nrow = 2, 
              # labeller = label_wrap_gen(multi_line = TRUE)
              )+
-  theme(strip.text = element_text(size = 12, family = "sans", lineheight = 1, face = "bold"),
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme(strip.text = element_text(size = 12, family = "sans", lineheight = 1, face = "bold", margin = margin(0,0,0.5,0,"mm")),
+        # panel.spacing = ,
         plot.margin = margin()) 
 
 p
