@@ -45,71 +45,30 @@ data.frame(suboutcomes = c("HCC cases diagnosed",
 
 xdf<-rbind(xdf_surv,xdf_nosurv) 
 
-##make spacer
+
 squares_per_row<-25
 
-xdf_nosurv[1,2]
-
-
-data.frame(suboutcomes = c("HCC cases diagnosed",
-                           "deaths from HCC",
-                           "deaths from other causes",
-                           "deaths from any cause",
-                           "false alarms",
-                           "intensified ultrasound follow-ups",
-                           "CT/MRI scans",
-                           "liver biopsies"),
-           vals = c(squares_per_row+
-                      squares_per_row-squares_per_row*((xdf_nosurv[1,2]/squares_per_row)-
-                                                         floor(xdf_nosurv[1,2]/squares_per_row)),
-                    squares_per_row+
-                      squares_per_row-squares_per_row*((xdf_nosurv[2,2]/squares_per_row)-
-                                                         floor(xdf_nosurv[2,2]/squares_per_row)),
-                    squares_per_row+
-                      squares_per_row-squares_per_row*((xdf_nosurv[3,2]/squares_per_row)-
-                                                         floor(xdf_nosurv[3,2]/squares_per_row)),
-                    squares_per_row+
-                      squares_per_row-squares_per_row*((xdf_nosurv[4,2]/squares_per_row)-
-                                                         floor(xdf_nosurv[4,2]/squares_per_row)),
-                    squares_per_row+
-                      squares_per_row-squares_per_row*((xdf_nosurv[5,2]/squares_per_row)-
-                                                         floor(xdf_nosurv[5,2]/squares_per_row)),
-                    squares_per_row+
-                      squares_per_row-squares_per_row*((xdf_nosurv[6,2]/squares_per_row)-
-                                                         floor(xdf_nosurv[6,2]/squares_per_row)),
-                    squares_per_row+
-                      squares_per_row-squares_per_row*((xdf_nosurv[7,2]/squares_per_row)-
-                                                         floor(xdf_nosurv[7,2]/squares_per_row)),
-                    squares_per_row+
-                      squares_per_row-squares_per_row*((xdf_nosurv[8,2]/squares_per_row)-
-                                                         floor(xdf_nosurv[8,2]/squares_per_row))),
-           outcomes=c("All diagnoses:",
-                      "Benefits:",
-                      "Benefits:",
-                      "Benefits:",
-                      "Harms:",
-                      "Harms:",
-                      "Harms:",
-                      "Harms:"),
-           int=rep("",8)
-) -> xdf_spacer
-
-xdf<-rbind(xdf,xdf_spacer)%>% 
-  mutate(suboutcomes=paste(outcomes," ",suboutcomes))
+ xdf%>% 
+   mutate(suboutcomes=paste(outcomes," ",suboutcomes))->xdf
 
 xdf %>% 
   spread(key=int,value=vals)->xdf_wide
 
 xdf_wide %>% 
-  mutate(labels=paste(Surveillance,"with surveillance vs.",No_surveillance,"without"))->xdf_wide
+  mutate(labels=paste(Surveillance,"with surveillance vs.",No_surveillance,"without"),
+         spacer=round(squares_per_row+
+           squares_per_row-squares_per_row*((No_surveillance/squares_per_row)-
+                                              floor(No_surveillance/squares_per_row))))->xdf_wide
 
 xdf<- xdf_wide %>% 
-  gather(key="int",value="vals",Surveillance,No_surveillance,V1,na.rm=F) 
+  gather(key="int",value="vals",Surveillance,No_surveillance,spacer,na.rm=F) 
 
 ###plot waffles
 
+
+
 p<- xdf %>%
-  mutate(int=factor(int,levels=c("No_surveillance","V1","Surveillance"))) %>% 
+  mutate(int=factor(int,levels=c("No_surveillance","spacer","Surveillance"))) %>% 
   count(labels, suboutcomes, int, wt = vals) %>%
   ggplot(
     aes(fill = int, values = n)
