@@ -59,11 +59,11 @@ xdf_wide<- xdf_wide %>%
 xdf_wide %>% 
   mutate(labels=paste(Surveillance_vals,suboutcomes,"with surveillance vs.",No_surveillance_vals,"without"),
          "No_surveillance_vals spacer"=round(ifelse(surv_height>no_surv_height,squares_per_row*cond,0)+
-           squares_per_row*3-squares_per_row*((No_surveillance_vals/squares_per_row)-
-                                              floor(No_surveillance_vals/squares_per_row))),
+           squares_per_row*2+squares_per_row*(ceiling(No_surveillance_vals/squares_per_row)-
+                                              (No_surveillance_vals/squares_per_row))),
          "Surveillance_vals spacer"=round(ifelse(no_surv_height>surv_height,squares_per_row*cond,0)+
-              squares_per_row*3-squares_per_row*((Surveillance_vals/squares_per_row)-
-                                              floor(Surveillance_vals/squares_per_row))))->xdf_wide
+              squares_per_row*2+squares_per_row*(ceiling(Surveillance_vals/squares_per_row)-
+                                              (Surveillance_vals/squares_per_row))))->xdf_wide
 
 xdf<- xdf_wide %>% 
   gather(key="int",value="vals",
