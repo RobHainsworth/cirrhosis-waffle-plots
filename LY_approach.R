@@ -243,53 +243,6 @@ xdf2<- xdf_wide2 %>%
                              ##,"without surveillance"
                        ))))
 
-p2<- xdf2 %>%
-  mutate(int=factor(int,levels=c("No surveillance","Surveillance")),
-         suboutcomes=factor(suboutcomes,levels=c("CT/MRI scans",
-                                                 "CT/MRI scans  spacer",
-                                                 "false alarms",
-                                                 "false alarms  spacer",
-                                                 "intensified ultrasound follow-ups",
-                                                 "intensified ultrasound follow-ups  spacer",
-                                                 "liver biopsies",
-                                                 "liver biopsies  spacer"))) %>% 
-  count(int,suboutcomes, wt = vals, height,labels) %>%
-  ggplot(
-    aes(fill = suboutcomes, values = n)
-  ) +
-  geom_waffle(
-    n_rows = squares_per_row,
-    size = 0.33, 
-    colour = "white",
-    flip = T,
-    show.legend = F
-  ) +
-  geom_text(aes(x=1,y=height+1.5,hjust=0,label=labels),size=5)+
-  scale_fill_manual(
-    name = NULL,
-    values = c("dark red",
-               "white",
-               "dark red",
-               "white",
-               "dark red",
-               "white",
-               "dark red",
-               "white")
-  ) +
-  facet_wrap(~int,
-             nrow=2)+
-  coord_equal() +
-  theme_ipsum(grid="") +
-  theme_enhance_waffle() +
-  ggtitle("Harms of surveillance (amongst 1000 people)")+ 
-  scale_colour_ipsum()+
-  theme(
-    strip.text = element_blank()
-    ## element_text(face = "bold", size = rel(1.5))
-  )
-p2
-
-plot_grid(p2,p1,ncol=1,rel_widths = c(34,66))
 
 ##comparison approach
 
@@ -324,7 +277,10 @@ xdf <- xdf %>%
 sum(xdf$number)
 
 ##Comparison between interventions
-data.frame(suboutcomes = c("additional cases diagnosed",
+data.frame(suboutcomes = c("additional years lived without diagnosis",
+                           "additional years lived with diagnosis",
+                           "additional years lived overall",
+                            "additional cases diagnosed",
                            "fewer deaths from HCC",
                            "fewer deaths from other causes",
                            "fewer deaths from any cause",
@@ -332,8 +288,11 @@ data.frame(suboutcomes = c("additional cases diagnosed",
                            "intensified ultrasound follow-ups",
                            "additional CT/MRI scans",
                            "liver biopsies"),
-           vals = c(110,69,82,151,150,85,65,39),
-           outcomes=c("Diagnosis of HCC",
+           vals = c(18,1,19,110,69,82,151,150,85,65,39),
+           outcomes=c("Comparison of life expectancy",
+                      "Comparison of life expectancy",
+                      "Comparison of life expectancy",
+                      "Diagnosis of HCC",
                       "Benefits of surveillance",
                       "Benefits of surveillance",
                       "Benefits of surveillance",
@@ -341,10 +300,13 @@ data.frame(suboutcomes = c("additional cases diagnosed",
                       "Harms from surveillance",
                       "Harms from surveillance",
                       "Harms from surveillance"),
-           int=rep("surv",8)
+           int=rep("surv",11)
 ) -> xdf_surv
 
-data.frame(suboutcomes = c("additional cases diagnosed",
+data.frame(suboutcomes = c("additional years lived without diagnosis",
+                           "additional years lived with diagnosis",
+                           "additional years lived overall",
+                           "additional cases diagnosed",
                            "fewer deaths from HCC",
                            "fewer deaths from other causes",
                            "fewer deaths from any cause",
@@ -352,8 +314,11 @@ data.frame(suboutcomes = c("additional cases diagnosed",
                            "intensified ultrasound follow-ups",
                            "additional CT/MRI scans",
                            "liver biopsies"),
-           vals = c(110,82,82,164,0,0,0,0),
-           outcomes=c("Diagnosis of HCC",
+           vals = c(16,1,17,110,82,82,164,0,0,0,0),
+           outcomes=c("Comparison of life expectancy",
+                      "Comparison of life expectancy",
+                      "Comparison of life expectancy",
+                      "Diagnosis of HCC",
                       "Benefits of surveillance",
                       "Benefits of surveillance",
                       "Benefits of surveillance",
@@ -361,7 +326,7 @@ data.frame(suboutcomes = c("additional cases diagnosed",
                       "Harms from surveillance",
                       "Harms from surveillance",
                       "Harms from surveillance"),
-           int=rep("nosurv",8)
+           int=rep("nosurv",11)
 )->xdf_nosurv
 
 xdf<-rbind(xdf_surv,xdf_nosurv)
@@ -379,18 +344,16 @@ xdf<- xdf_wide %>%
   arrange(desc(int)) %>% 
   mutate(vals=abs(vals))
 
-##subset data
-xdf1<-filter(xdf, outcomes=="Diagnosis of HCC")
-xdf2<-filter(xdf, outcomes=="Benefits of surveillance")
-xdf3<-filter(xdf, outcomes=="Harms from surveillance")
+title1<-c("Comparison of life expectancy (for one person undergoing surveillance)")
+title2<-c("Comparison of outcomes (for 1000 people undergoing surveillance over 5 years)")
 
-title1<-c("Diagnosis of HCC")
-title2<-c("Benefits of surveillance (amongst 1000 people)")
-title3<-c("Harms of surveillance")
+##plot waffles and arrange
 
-##plot waffles
+xdf %>%
+  filter(outcomes=="Comparison of life expectancy") %>% 
+  mutate(int=ifelse(outcomes=="Harms from surveillance","Harms",int))->xdf1
 
-p3<- xdf1 %>%
+p1<- xdf1 %>%
   mutate(int=factor(int,levels=c("nosurv","diff"))) %>% 
   count(suboutcomes, int, wt = vals) %>%
   ggplot(
@@ -414,10 +377,14 @@ p3<- xdf1 %>%
   theme_enhance_waffle() +
   ggtitle(title1)+ 
   scale_colour_ipsum()
-p3
+p1
 
-p4<- xdf2 %>%
-  mutate(int=factor(int,levels=c("nosurv","diff"))) %>% 
+xdf %>%
+  filter(outcomes!="Comparison of life expectancy") %>% 
+  mutate(int=ifelse(outcomes=="Harms from surveillance","Harms",int))->xdf2
+
+p2<- xdf2 %>%
+  mutate(int=factor(int,levels=c("nosurv","diff","Harms"))) %>% 
   count(suboutcomes, int, wt = vals) %>%
   ggplot(
     aes(fill = reorder(int,-int), values = n)
@@ -431,18 +398,15 @@ p4<- xdf2 %>%
   ) +
   scale_fill_manual(
     name = NULL,
-    values = c("#969696","dark green")
+    values = c("#969696","dark green","dark red")
   ) +
   facet_wrap(~suboutcomes,
-             nrow=1)+
+             nrow=2)+
   coord_equal() +
   theme_ipsum(grid="") +
   theme_enhance_waffle() +
   ggtitle(title2)+ 
   scale_colour_ipsum()
-p4
+p2
 
-          
-top_row<-plot_grid(p2,p4,ncol=2,rel_widths = c(33,67))
-bottom_row<-plot_grid(p3,p1,ncol=2,rel_widths = c(25,75))
-plot_grid(top_row,p1,nrow=2,rel_heights = c(64,36))
+plot_grid(p1,p2,nrow=2,rel_heights = c(36,64))
