@@ -336,7 +336,10 @@ xdf %>%
 
 xdf_wide %>% 
   mutate(diff=abs(nosurv-surv),
-         suboutcomes=paste(diff," ",suboutcomes))->xdf_wide
+         suboutcomes_new=paste(diff," ",suboutcomes))->xdf_wide
+
+newLabs <- c(paste(xdf_wide$diff,xdf_wide$suboutcomes))
+newLabs<-setNames(newLabs,nm=xdf_wide$suboutcomes)
 
 xdf<- xdf_wide %>% 
   gather(key="int",value="vals",nosurv,diff,na.rm=F) %>% 
@@ -353,8 +356,11 @@ xdf %>%
   filter(outcomes=="Comparison of life expectancy") %>% 
   mutate(int=ifelse(outcomes=="Harms from surveillance","Harms",int))->xdf1
 
+# newLabs <- c(paste(xdf$vals,xdf$suboutcomes))
+# newLabs<-setNames(newLabs,nm=xdf$suboutcomes)
+
 p1<- xdf1 %>%
-  mutate(int=factor(int,levels=c("nosurv","diff"))) %>% 
+  mutate(int=factor(int,levels=c("nosurv","diff"))) %>%
   count(suboutcomes, int, wt = vals) %>%
   ggplot(
     aes(fill = reorder(int,-int), values = n)
@@ -371,7 +377,9 @@ p1<- xdf1 %>%
     values = c("#969696","dark green")
   ) +
   facet_wrap(~suboutcomes,
-             nrow=1)+
+             nrow=1
+             ,labeller=as_labeller(newLabs,default=label_wrap_gen(50))
+             )+
   coord_equal() +
   theme_ipsum(grid="") +
   theme_enhance_waffle() +
@@ -382,6 +390,9 @@ p1
 xdf %>%
   filter(outcomes!="Comparison of life expectancy") %>% 
   mutate(int=ifelse(outcomes=="Harms from surveillance","Harms",int))->xdf2
+
+# newLabs <- c(paste(xdf$vals,xdf$suboutcomes))
+# newLabs<-setNames(newLabs,nm=xdf$suboutcomes)
 
 p2<- xdf2 %>%
   mutate(int=factor(int,levels=c("nosurv","diff","Harms"))) %>% 
@@ -400,8 +411,17 @@ p2<- xdf2 %>%
     name = NULL,
     values = c("#969696","dark green","dark red")
   ) +
-  facet_wrap(~suboutcomes,
-             nrow=2)+
+  facet_wrap(~factor(suboutcomes,levels=c("additional cases diagnosed",
+                                          "fewer deaths from any cause",
+                                          "fewer deaths from HCC",
+                                          "fewer deaths from other causes",
+                                          "false alarms",
+                                          "intensified ultrasound follow-ups",
+                                          "additional CT/MRI scans",
+                                          "liver biopsies")),
+             nrow=2
+             ,labeller=as_labeller(newLabs,default=label_wrap_gen(50))
+             )+
   coord_equal() +
   theme_ipsum(grid="") +
   theme_enhance_waffle() +
@@ -410,3 +430,4 @@ p2<- xdf2 %>%
 p2
 
 plot_grid(p1,p2,nrow=2,rel_heights = c(36,64))
+newLabs
