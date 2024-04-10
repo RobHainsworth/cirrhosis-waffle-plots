@@ -4,14 +4,14 @@ p_load(dplyr,magrittr,ggplot2,waffle,socviz,hrbrthemes,tidyr,forcats,layout,huxt
 
 ##Comparison between interventions
 data.frame(suboutcomes = c("HCC cases diagnosed",
-                           "deaths from HCC",
                            "deaths from other causes",
+                           "deaths with HCC",
                            "deaths from any cause",
                            "false alarms",
                            "intensified ultrasound follow-ups",
                            "CT/MRI scans",
                            "liver biopsies"),
-           vals = c(110,69,82,151,150,85,65,39),
+           vals = c(110,82,69,151,150,85,65,39),
            outcomes=c("All diagnoses:",
                       "Benefits:",
                       "Benefits:",
@@ -24,8 +24,8 @@ data.frame(suboutcomes = c("HCC cases diagnosed",
 ) -> xdf_surv
 
 data.frame(suboutcomes = c("HCC cases diagnosed",
-                           "deaths from HCC",
                            "deaths from other causes",
+                           "deaths with HCC",
                            "deaths from any cause",
                            "false alarms",
                            "intensified ultrasound follow-ups",
@@ -45,7 +45,6 @@ data.frame(suboutcomes = c("HCC cases diagnosed",
 
 xdf<-rbind(xdf_surv,xdf_nosurv) 
 
-
 squares_per_row<-25
 
 xdf %>% 
@@ -59,11 +58,11 @@ xdf_wide<- xdf_wide %>%
 xdf_wide %>% 
   mutate(labels=paste(Surveillance_vals,suboutcomes,"with surveillance vs.",No_surveillance_vals,"without"),
          "No_surveillance_vals spacer"=round(ifelse(surv_height>no_surv_height,squares_per_row*cond,0)+
-           squares_per_row*2+squares_per_row*(ceiling(No_surveillance_vals/squares_per_row)-
-                                              (No_surveillance_vals/squares_per_row))),
+                                               squares_per_row*2+squares_per_row*(ceiling(No_surveillance_vals/squares_per_row)-
+                                                                                    (No_surveillance_vals/squares_per_row))),
          "Surveillance_vals spacer"=round(ifelse(no_surv_height>surv_height,squares_per_row*cond,0)+
-              squares_per_row*2+squares_per_row*(ceiling(Surveillance_vals/squares_per_row)-
-                                              (Surveillance_vals/squares_per_row))))->xdf_wide
+                                            squares_per_row*2+squares_per_row*(ceiling(Surveillance_vals/squares_per_row)-
+                                                                                 (Surveillance_vals/squares_per_row))))->xdf_wide
 
 xdf<- xdf_wide %>% 
   gather(key="int",value="vals",
@@ -72,79 +71,8 @@ xdf<- xdf_wide %>%
   mutate(var=substr(int,nchar(int)-6,nchar(int)),
          suboutcomes=ifelse(var==" spacer",paste(suboutcomes," spacer"),suboutcomes),
          int=sapply(strsplit(int," "), "[[", 1)
-         ) %>% 
-  arrange(int,suboutcomes) 
-
-xdf %>% 
-  spread(key=int,value=vals) %>% 
-  mutate("No surveillance"=ceiling(cumsum(No_surveillance_vals)/squares_per_row),
-         Surveillance=ceiling(cumsum(Surveillance_vals)/squares_per_row))->xdf_wide2
-
-xdf2<- xdf_wide2 %>% 
-  gather(key="int",value="height",
-         Surveillance,"No surveillance",
-         na.rm=F) %>% 
-  mutate(vals=ifelse(int=="Surveillance",Surveillance_vals,No_surveillance_vals),
-         labels=ifelse(var==" spacer","",
-                       ifelse(int=="Surveillance",
-                              paste(vals,suboutcomes,"with surveillance"),
-                              paste(vals,suboutcomes,"without surveillance"))))
-
-         
-###plot waffles- all together
-
-p<- xdf2 %>%
-  mutate(int=factor(int,levels=c("No surveillance","Surveillance")),
-         suboutcomes=factor(suboutcomes,levels=c("CT/MRI scans",
-                                                 "CT/MRI scans  spacer",
-                                                 "deaths from any cause",
-                                                 "deaths from any cause  spacer",
-                                                 "deaths from HCC",
-                                                 "deaths from HCC  spacer",
-                                                 "deaths from other causes",
-                                                 "deaths from other causes  spacer",
-                                                 "false alarms",
-                                                 "false alarms  spacer",
-                                                 "HCC cases diagnosed",
-                                                 "HCC cases diagnosed  spacer",
-                                                 "intensified ultrasound follow-ups",
-                                                 "intensified ultrasound follow-ups  spacer",
-                                                 "liver biopsies",
-                                                 "liver biopsies  spacer"))) %>% 
-  count(int,suboutcomes, wt = vals, height,labels) %>%
-  ggplot(
-    aes(fill = suboutcomes, values = n)
-  ) +
-  geom_waffle(
-    n_rows = squares_per_row,
-    size = 0.33, 
-    colour = "white",
-    flip = T,
-    show.legend = F
-  ) +
-  geom_text(aes(x=1,y=height+1.5,hjust=0,label=labels),size=2.5)+
-  scale_fill_manual(
-    name = NULL,
-    values = c("black",
-               "white","black",
-               "white","black",
-               "white","black",
-               "white","black",
-               "white","black",
-               "white","black",
-               "white","black",
-               "white")
-  ) +
-  facet_wrap(~int,
-             nrow=1)+
-  coord_equal() +
-  theme_ipsum(grid="") +
-  theme_enhance_waffle() +
-  ##ggtitle(title1)+ 
-  scale_colour_ipsum()+
-  theme(
-    strip.text = element_text(face = "bold", size = rel(0.75)))
-p
+  ) %>% 
+  arrange(int,desc(suboutcomes)) 
 
 ###plot waffles by outcome and arrange
 
@@ -153,30 +81,42 @@ p
 xdf %>% 
   filter(outcomes=="Benefits:") %>% 
   spread(key=int,value=vals) %>% 
+  arrange(factor(suboutcomes,levels=c("deaths from other causes",
+                                     "deaths from other causes  spacer",
+                                     "deaths with HCC",
+                                     "deaths with HCC  spacer",
+                                     "deaths from any cause",
+                                     "deaths from any cause  spacer"))) %>% 
   mutate("No surveillance"=ceiling(cumsum(No_surveillance_vals)/squares_per_row),
          Surveillance=ceiling(cumsum(Surveillance_vals)/squares_per_row))->xdf_wide2
 
 xdf2<- xdf_wide2 %>% 
   gather(key="int",value="height",
-         Surveillance,"No surveillance",
+         Surveillance,
+         "No surveillance",
          na.rm=F) %>% 
-  mutate(vals=ifelse(int=="Surveillance",Surveillance_vals,No_surveillance_vals),
-         labels=ifelse(var==" spacer","",
-                       ifelse(int=="Surveillance",
-                              paste(vals,suboutcomes
-                                    ##,"with surveillance"
-                                    ),
-                              paste(vals,suboutcomes
-                                    ##,"without surveillance"
-                                    ))))
+  mutate(vals=ifelse(int=="Surveillance",Surveillance_vals
+                      ,No_surveillance_vals
+  ),
+  labels=ifelse(var==" spacer","",
+                ifelse(suboutcomes=="deaths with HCC",
+                       paste("comprising",vals,suboutcomes),
+                             ifelse(suboutcomes=="deaths from other causes",
+                                    paste("and",vals,suboutcomes)
+  
+                       ,
+                       paste(vals,suboutcomes
+                             ##,"without surveillance"
+                       )))))
+
 p1<- xdf2 %>%
   mutate(int=factor(int,levels=c("No surveillance","Surveillance")),
-         suboutcomes=factor(suboutcomes,levels=c("deaths from any cause",
-                                                 "deaths from any cause  spacer",
-                                                 "deaths from HCC",
-                                                 "deaths from HCC  spacer",
-                                                 "deaths from other causes",
-                                                 "deaths from other causes  spacer"))) %>% 
+         suboutcomes=factor(suboutcomes,levels=c("deaths from other causes",
+                                                 "deaths from other causes  spacer",
+                                                 "deaths with HCC",
+                                                 "deaths with HCC  spacer",
+                                                 "deaths from any cause",
+                                                 "deaths from any cause  spacer"))) %>% 
   count(int,suboutcomes, wt = vals, height,labels) %>%
   ggplot(
     aes(fill = suboutcomes, values = n)
@@ -191,9 +131,9 @@ p1<- xdf2 %>%
   geom_text(aes(x=1,y=height+1.5,hjust=0,label=labels),size=5)+
   scale_fill_manual(
     name = NULL,
-    values = c("black",
+    values = c("dark grey",
                "white",
-               "black",
+               "dark grey",
                "white",
                "black",
                "white")
@@ -219,17 +159,22 @@ xdf %>%
 
 xdf2<- xdf_wide2 %>% 
   gather(key="int",value="height",
-         Surveillance,"No surveillance",
+         Surveillance,
+         "No surveillance",
          na.rm=F) %>% 
-  mutate(vals=ifelse(int=="Surveillance",Surveillance_vals,No_surveillance_vals),
-         labels=ifelse(var==" spacer","",
-                       ifelse(int=="Surveillance",
-                              paste(vals,suboutcomes
-                                    ##,"with surveillance"
-                                    ),
-                              paste(vals,suboutcomes
-                                    ##,"without surveillance"
-                                    ))))
+  mutate(vals=ifelse(int=="Surveillance",Surveillance_vals
+                      ,No_surveillance_vals
+  ),
+  labels=ifelse(var==" spacer","",
+                ifelse(int=="Surveillance",
+                       ifelse(suboutcomes=="deaths with HCC",
+                              paste("comprising:",vals,suboutcomes),
+                                    paste(vals,suboutcomes
+                             ##,"with surveillance"
+                       )),
+                       paste(vals,suboutcomes
+                             ##,"without surveillance"
+                       ))))
 
 p2<- xdf2 %>%
   mutate(int=factor(int,levels=c("No surveillance","Surveillance")),
@@ -270,7 +215,7 @@ xdf %>%
   spread(key=int,value=vals) %>% 
   mutate(
     ##"No surveillance"=ceiling(cumsum(No_surveillance_vals)/squares_per_row),
-         Surveillance=ceiling(cumsum(Surveillance_vals)/squares_per_row))->xdf_wide2
+    Surveillance=ceiling(cumsum(Surveillance_vals)/squares_per_row))->xdf_wide2
 
 xdf2<- xdf_wide2 %>% 
   gather(key="int",value="height",
@@ -278,16 +223,16 @@ xdf2<- xdf_wide2 %>%
          ##"No surveillance",
          na.rm=F) %>% 
   mutate(vals=ifelse(int=="Surveillance",Surveillance_vals
-                    ## ,No_surveillance_vals
-                     ),
-         labels=ifelse(var==" spacer","",
-                       ifelse(int=="Surveillance",
-                              paste(vals,suboutcomes
-                                    ##,"with surveillance"
-                                    ),
-                              paste(vals,suboutcomes
-                                    ##,"without surveillance"
-                                    ))))
+                     ## ,No_surveillance_vals
+  ),
+  labels=ifelse(var==" spacer","",
+                ifelse(int=="Surveillance",
+                       paste(vals,suboutcomes
+                             ##,"with surveillance"
+                       ),
+                       paste(vals,suboutcomes
+                             ##,"without surveillance"
+                       ))))
 
 p3<- xdf2 %>%
   mutate(int=factor(int,levels=c("No surveillance","Surveillance")),
@@ -331,8 +276,8 @@ p3<- xdf2 %>%
   scale_colour_ipsum()+
   theme(
     strip.text = element_blank()
-     ## element_text(face = "bold", size = rel(1.5))
-      )
+    ## element_text(face = "bold", size = rel(1.5))
+  )
 p3
 
 right_col<-plot_grid(p2,p1,ncol=1,rel_heights = c(34,66))
