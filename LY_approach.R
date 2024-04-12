@@ -277,10 +277,10 @@ xdf <- xdf %>%
 sum(xdf$number)
 
 ##Comparison between interventions
-data.frame(suboutcomes = c("additional years lived without diagnosis",
-                           "additional years lived with diagnosis",
-                           "additional years lived overall",
-                            "additional cases diagnosed",
+data.frame(suboutcomes = c("more years lived without diagnosis",
+                           "more years lived with diagnosis",
+                           "more years lived overall",
+                            "more cases diagnosed",
                            "fewer deaths from HCC",
                            "fewer deaths from other causes",
                            "fewer deaths from any cause",
@@ -303,10 +303,10 @@ data.frame(suboutcomes = c("additional years lived without diagnosis",
            int=rep("surv",11)
 ) -> xdf_surv
 
-data.frame(suboutcomes = c("additional years lived without diagnosis",
-                           "additional years lived with diagnosis",
-                           "additional years lived overall",
-                           "additional cases diagnosed",
+data.frame(suboutcomes = c("more years lived without diagnosis",
+                           "more years lived with diagnosis",
+                           "more years lived overall",
+                           "more cases diagnosed",
                            "fewer deaths from HCC",
                            "fewer deaths from other causes",
                            "fewer deaths from any cause",
@@ -338,12 +338,13 @@ xdf_wide %>%
   mutate(diff=abs(nosurv-surv),
          suboutcomes_new=paste(diff," ",suboutcomes))->xdf_wide
 
-newLabs <- c(paste(xdf_wide$diff,xdf_wide$suboutcomes))
+newLabs <- c(paste(xdf_wide$diff,xdf_wide$suboutcomes,"(",xdf_wide$surv
+                   ,"vs.",xdf_wide$nosurv
+                   ,")"))
 newLabs<-setNames(newLabs,nm=xdf_wide$suboutcomes)
 
 xdf<- xdf_wide %>% 
-  gather(key="int",value="vals",nosurv,diff,na.rm=F) %>% 
-  select(-c(surv)) %>% 
+  gather(key="int",value="vals",nosurv,diff,surv,na.rm=F) %>% 
   arrange(desc(int)) %>% 
   mutate(vals=abs(vals))
 
@@ -378,24 +379,27 @@ p1<- xdf1 %>%
   ) +
   facet_wrap(~suboutcomes,
              nrow=1
-             ,labeller=as_labeller(newLabs,default=label_wrap_gen(50))
+             ,labeller=as_labeller(newLabs,default=label_wrap_gen(100))
              )+
   coord_equal() +
   theme_ipsum(grid="") +
   theme_enhance_waffle() +
   ggtitle(title1)+ 
-  scale_colour_ipsum()
+  scale_colour_ipsum()+ 
+  theme(strip.text.x = element_text(size = 10))
 p1
 
 xdf %>%
   filter(outcomes!="Comparison of life expectancy") %>% 
-  mutate(int=ifelse(outcomes=="Harms from surveillance","Harms",int))->xdf2
+  mutate(int=ifelse(outcomes=="Harms from surveillance",
+                    ifelse(int=="surv","Harms","NA")
+                    ,int))->xdf2
 
 # newLabs <- c(paste(xdf$vals,xdf$suboutcomes))
 # newLabs<-setNames(newLabs,nm=xdf$suboutcomes)
 
 p2<- xdf2 %>%
-  mutate(int=factor(int,levels=c("nosurv","diff","Harms"))) %>% 
+  mutate(int=factor(int,levels=c("surv","diff","Harms"))) %>% 
   count(suboutcomes, int, wt = vals) %>%
   ggplot(
     aes(fill = reorder(int,-int), values = n)
@@ -411,7 +415,7 @@ p2<- xdf2 %>%
     name = NULL,
     values = c("#969696","dark green","dark red")
   ) +
-  facet_wrap(~factor(suboutcomes,levels=c("additional cases diagnosed",
+  facet_wrap(~factor(suboutcomes,levels=c("more cases diagnosed",
                                           "fewer deaths from any cause",
                                           "fewer deaths from HCC",
                                           "fewer deaths from other causes",
@@ -420,14 +424,15 @@ p2<- xdf2 %>%
                                           "additional CT/MRI scans",
                                           "liver biopsies")),
              nrow=2
-             ,labeller=as_labeller(newLabs,default=label_wrap_gen(50))
+             ,labeller=as_labeller(newLabs,default=label_wrap_gen(100))
              )+
   coord_equal() +
   theme_ipsum(grid="") +
   theme_enhance_waffle() +
   ggtitle(title2)+ 
-  scale_colour_ipsum()
+  scale_colour_ipsum()+ 
+  theme(strip.text.x = element_text(size = 10))
 p2
 
-plot_grid(p1,p2,nrow=2,rel_heights = c(36,64))
+plot_grid(p1,p2,nrow=2,rel_heights = c(19.3,80.7))
 newLabs
