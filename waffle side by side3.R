@@ -79,7 +79,7 @@ xdf<- xdf_wide %>%
 ##benefits
 
 xdf %>% 
-  filter(outcomes=="Benefits:",substr(suboutcomes,1,13)!="deaths from a") %>% 
+  filter(outcomes=="Benefits:",var=="ce_vals",substr(suboutcomes,1,13)!="deaths from a") %>% 
   spread(key=int,value=vals) %>% 
   arrange(factor(suboutcomes,levels=c("deaths from other causes",
                                       "deaths from other causes  spacer",
@@ -88,7 +88,10 @@ xdf %>%
                                       "deaths from any cause",
                                       "deaths from any cause  spacer"))) %>% 
   mutate("No surveillance"=ceiling(cumsum(No_surveillance_vals)/squares_per_row),
-         Surveillance=ceiling(cumsum(Surveillance_vals)/squares_per_row))->xdf_wide2
+         Surveillance=ceiling(cumsum(Surveillance_vals)/squares_per_row),
+         surv_outcome_total=sum(Surveillance_vals),
+         no_surv_outcome_total=sum(No_surveillance_vals),
+         rank=row_number())->xdf_wide2
 
 xdf2<- xdf_wide2 %>% 
   gather(key="int",value="height",
@@ -96,16 +99,19 @@ xdf2<- xdf_wide2 %>%
          "No surveillance",
          na.rm=F) %>% 
   mutate(vals=ifelse(int=="Surveillance",Surveillance_vals
-                     ,No_surveillance_vals),labels=ifelse(var==" spacer","",paste(vals,suboutcomes)))
+                     ,No_surveillance_vals),labels=ifelse(var==" spacer","",paste(vals,suboutcomes)),
+         outcome_total=ifelse(int=="Surveillance",surv_outcome_total,no_surv_outcome_total),
+    suboutcomes_new=paste(vals,suboutcomes))
                
 p1<- xdf2 %>%
   mutate(int=factor(int,levels=c("No surveillance","Surveillance")),
          suboutcomes=factor(suboutcomes,levels=c("deaths from other causes",
-                                                 "deaths from other causes  spacer",
-                                                 "deaths with HCC",
-                                                 "deaths with HCC  spacer"
+                                                 ##"deaths from other causes  spacer",
+                                                 "deaths with HCC"
+                                                 # ,
+                                                 # "deaths with HCC  spacer"
                                                  ))) %>% 
-  count(int,suboutcomes, wt = vals, height,labels) %>%
+  count(int,suboutcomes, wt = vals, height,labels,outcome_total,rank,suboutcomes_new) %>%
   ggplot(
     aes(fill = suboutcomes, values = n)
   ) +
@@ -116,13 +122,18 @@ p1<- xdf2 %>%
     flip = T,
     show.legend = F
   ) +
-  geom_text(aes(x=1,y=height+1.5,hjust=0,label=labels),size=5)+
+  geom_label(colour="white",aes(x=1,y=floor(outcome_total/squares_per_row)+0.5+2*rank,
+                 hjust=0,
+                 label=suboutcomes_new
+                              ,size=5))+
   scale_fill_manual(
-    name = NULL,
-    values = c("dark blue",
-               "white",
-               "purple",
-               "white")
+  name = NULL
+  ,
+  values = c("dark blue",
+             ##"white",
+             "purple"
+             #, "white"
+             )
   ) +
   facet_wrap(~int,
              nrow=1)+
@@ -130,9 +141,10 @@ p1<- xdf2 %>%
   theme_ipsum(grid="") +
   theme_enhance_waffle() +
   ggtitle("Comparison of benefits")+ 
-  scale_colour_ipsum()+
+  ##scale_colour_ipsum()+
+  theme(legend.position="none")+
   theme(
-    strip.text = element_text(face = "bold", size = rel(1.5)))
+    strip.text = element_text(margin(b=2),face = "bold", size = rel(1.25)))
 p1
 
 #all diagnoses
@@ -177,7 +189,7 @@ p2<- xdf2 %>%
     flip = T,
     show.legend = F
   ) +
-  geom_text(aes(x=1,y=height+1.5,hjust=0,label=labels),size=5)+
+  geom_label(colour="white",aes(x=1,y=height+1.5,hjust=0,label=labels,size=5))+
   scale_fill_manual(
     name = NULL,
     values = c("black",
@@ -190,8 +202,9 @@ p2<- xdf2 %>%
   theme_enhance_waffle() +
   ggtitle("Comparison of diagnoses")+ 
   scale_colour_ipsum()+
+  theme(legend.position="none")+
   theme(
-    strip.text = element_text(face = "bold", size = rel(1.5)))
+    strip.text = element_text(vjust=1,face = "bold", size = rel(1.25)))
 p2
 
 #Harms
@@ -234,6 +247,7 @@ p3<- xdf2 %>%
   ggplot(
     aes(fill = suboutcomes, values = n)
   ) +
+  
   geom_waffle(
     n_rows = squares_per_row,
     size = 0.33, 
@@ -241,7 +255,14 @@ p3<- xdf2 %>%
     flip = T,
     show.legend = F
   ) +
-  geom_text(aes(x=1,y=height+1.5,hjust=0,label=labels),size=5)+
+  geom_label(colour="white",aes(x=1,y=height+1.5,hjust=0,
+                                label=factor(labels,levels=c(
+                                  "39 liver biopsies",
+                                  "85 intensified ultrasound follow-ups",
+                                  "150 false alarms",
+                                  "65 CT/MRI scans"
+                                )),
+                                size=5))+
   scale_fill_manual(
     name = NULL,
     values = c("black",
@@ -260,6 +281,7 @@ p3<- xdf2 %>%
   theme_enhance_waffle() +
   ggtitle("Harms of surveillance")+ 
   scale_colour_ipsum()+
+  theme(legend.position="none")+
   theme(
     strip.text = element_blank()
     ## element_text(face = "bold", size = rel(1.5))
