@@ -8,8 +8,8 @@ p_load(dplyr, magrittr, ggplot2, waffle, socviz, hrbrthemes, fontawesome, cowplo
 data.frame(suboutcomes = c("undergo normal surveillance",
                            "false alarms without biopsies",
                            "false alarms with biopsies",
-                           "survive regardless of surveillance",
                            "deaths averted",
+                           "survive regardless of surveillance",
                            "die despite surveillance",
                            "deaths from other causes"),
            vals = c(654,111,39,28,13,69,82),
@@ -42,7 +42,14 @@ xdf<-xdf %>%
   mutate(outcomes_new=paste(outcomes,"\n","\n",outcomes_new))
 
 p<- xdf %>%
-  count(suboutcomes, outcomes, suboutcomes_new, wt = vals,rank, outcome_total) %>%
+  count(factor(suboutcomes,levels = c("undergo normal surveillance",
+                                             "false alarms without biopsies",
+                                             "false alarms with biopsies",
+                                             "deaths averted",
+                                              "survive regardless of surveillance",
+                                             "die despite surveillance",
+                                             "deaths from other causes")),
+        outcomes, suboutcomes_new, wt = vals,rank, outcome_total) %>%
   ggplot(
     aes(fill = suboutcomes_new, values = n)
   ) +
@@ -63,7 +70,7 @@ p<- xdf %>%
   geom_label(aes(
     ##colour=suboutcomes_new,
     x=1,y=outcome_total/25+1+2*rank,hjust=0
-                ,label=suboutcomes_new
-            ,size=5))
+    ,label=suboutcomes_new
+    ,size=5))
 
 p
